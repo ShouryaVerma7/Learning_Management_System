@@ -37,6 +37,10 @@ app.use("/api/v1/user", userRoute);
 app.use("/api/v1/courses", courseRoute);
 app.use("/api/v1/purchase", purchaseRoute);
 app.use("/api/v1/progress", courseProgressRoute);
+app.get("/", (req, res) => {
+  res.send("Backend is running");
+});
+
 
 
 app.get("/home", (_, res) => {

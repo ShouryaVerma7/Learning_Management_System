@@ -1,8 +1,8 @@
 import axios from "axios";
 
-const API = axios.create({
-  baseURL: "https://learning-management-system-44su.onrender.com",
+const api = axios.create({
+  baseURL: "https://learning-management-system-44su.onrender.com/api/v1",
   withCredentials: true,
 });
 
-export default API;
+export default api;

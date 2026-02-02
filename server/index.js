@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 8080;
 // Basic middleware that doesn't parse JSON for webhooks
 app.use(cookieParser()); 
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: "https://learning-management-system-eight-livid.vercel.app/",
     credentials: true
 }))
 

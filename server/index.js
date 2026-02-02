@@ -15,6 +15,9 @@ dotenv.config({})
 // call database connection here 
 connectDB()
 const app = express();
+app.get("/", (req, res) => {
+  res.send("Backend is running");
+});
 
 const PORT = process.env.PORT || 8080;
 
@@ -37,9 +40,6 @@ app.use("/api/v1/user", userRoute);
 app.use("/api/v1/courses", courseRoute);
 app.use("/api/v1/purchase", purchaseRoute);
 app.use("/api/v1/progress", courseProgressRoute);
-app.get("/", (req, res) => {
-  res.send("Backend is running");
-});
 
 
 

@@ -44,11 +44,12 @@ export const register = async (req, res) => {
 
     // Set cookie
     res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
+  httpOnly: true,
+  secure: true,        // REQUIRED for SameSite=None
+  sameSite: "none",    // REQUIRED for cross-domain
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
 
     // Return response (without password)
     const userWithoutPassword = { ...user._doc };

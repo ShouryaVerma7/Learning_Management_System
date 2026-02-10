@@ -1,7 +1,8 @@
-// frontend/src/features/api/courseApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const BASE_API = "http://localhost:8080/api/v1";
+// ✅ USE SAME DYNAMIC URL
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const BASE_API = `${API_URL}/api/v1`;
 
 export const courseApi = createApi({
   reducerPath: "courseApi",
@@ -22,7 +23,6 @@ export const courseApi = createApi({
     }),
 
     getSearchCourse: builder.query({
-      // arg: { query, categories, sortByPrice }
       query: ({ query = "", categories = [], sortByPrice = "" } = {}) => {
         let queryString = `/courses/search?query=${encodeURIComponent(query)}`;
 
@@ -38,7 +38,6 @@ export const courseApi = createApi({
           method: "GET",
         };
       },
-      // don't provide tags here (read-only)
     }),
 
     getPublishedCourse: builder.query({

@@ -2,259 +2,331 @@ import { User } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// Register controller
+// ✅ FOR LOCAL DEVELOPMENT - ALWAYS USE DEVELOPMENT SETTINGS
+const isProduction = false; // Force false for localhost
+console.log(`🔧 Environment: Local Development (CORS fixed)`);
+
+/* ================= REGISTER ================= */
 export const register = async (req, res) => {
   try {
+    console.log("📝 Register request received from:", req.headers.origin);
+
     const { name, email, password, role } = req.body;
 
-    // Validation
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required"
+        message: "All fields are required",
       });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "User already exists with this email"
+        message: "User already exists with this email",
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: role || "student"
+      role: role || "student",
     });
 
-    // Generate token
     const token = jwt.sign(
       { userId: user._id },
       process.env.SECRET_KEY,
       { expiresIn: "7d" }
     );
 
-    // Set cookie
-    res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,        // REQUIRED for SameSite=None
-  sameSite: "none",    // REQUIRED for cross-domain
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-});
+    // ✅ SIMPLIFIED COOKIE FOR LOCALHOST
+    const cookieOptions = {
+      httpOnly: true,
+      secure: false, // false for localhost
+      sameSite: "lax", // "lax" for localhost
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    };
 
+    console.log("🍪 Setting cookie for localhost");
 
-    // Return response (without password)
+    res.cookie("token", token, cookieOptions);
+
     const userWithoutPassword = { ...user._doc };
     delete userWithoutPassword.password;
 
     res.status(201).json({
       success: true,
       message: "User registered successfully",
-      data: userWithoutPassword
+      data: userWithoutPassword,
+      token: token // Also send token in response for testing
     });
 
   } catch (error) {
-    console.error("Registration error:", error);
+    console.error("❌ Registration error:", error);
     res.status(500).json({
       success: false,
-      message: "Internal server error during registration"
+      message: "Internal server error during registration",
     });
   }
 };
 
-// Login controller
+/* ================= LOGIN ================= */
 export const login = async (req, res) => {
   try {
+    console.log("🔑 Login request from:", req.headers.origin);
+
     const { email, password } = req.body;
 
-    // Validation
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required"
+        message: "Email and password are required",
       });
     }
 
-    // Find user
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
 
-    // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
 
-    // Generate token
     const token = jwt.sign(
-      { userId: user._id },
+      { userId: user._id, email: user.email },
       process.env.SECRET_KEY,
       { expiresIn: "7d" }
     );
 
-    // Set cookie
-    res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  maxAge: 7 * 24 * 60 * 60 * 1000
-});
+    console.log("✅ Login successful for:", user.email);
 
+    // ✅ SIMPLIFIED COOKIE FOR LOCALHOST
+    const cookieOptions = {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    };
 
-    // Return response (without password)
+    console.log("🍪 Setting cookie for localhost");
+
+    res.cookie("token", token, cookieOptions);
+
     const userWithoutPassword = { ...user._doc };
     delete userWithoutPassword.password;
 
     res.status(200).json({
       success: true,
       message: "Login successful",
-      data: userWithoutPassword
+      data: userWithoutPassword,
+      token: token // Also send token in response
     });
 
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("❌ Login error:", error);
     res.status(500).json({
       success: false,
-      message: "Internal server error during login"
+      message: "Internal server error during login",
     });
   }
 };
 
-// Logout controller
+/* ================= LOGOUT ================= */
 export const logout = (req, res) => {
   try {
-    res.clearCookie("token");
+    console.log("🚪 Logout request from:", req.headers.origin);
+
+    // ✅ SIMPLIFIED COOKIE CLEARING FOR LOCALHOST
+    const clearCookieOptions = {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+    };
+
+    res.clearCookie("token", clearCookieOptions);
+
     res.status(200).json({
       success: true,
-      message: "Logged out successfully"
+      message: "Logged out successfully",
     });
+
   } catch (error) {
-    console.error("Logout error:", error);
+    console.error("❌ Logout error:", error);
     res.status(500).json({
       success: false,
-      message: "Internal server error during logout"
+      message: "Internal server error during logout",
     });
   }
 };
 
-// Get user profile - FIXED VERSION
+/* ================= GET PROFILE ================= */
 export const getUserProfile = async (req, res) => {
   try {
+    console.log("👤 Profile request from:", req.headers.origin);
+    console.log("User ID from token:", req.id);
+
+    if (!req.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required - No user ID found",
+      });
+    }
+
+    // FIXED: Correct field names for populate (subtitle, description NOT subTitle, courseDescription)
     const user = await User.findById(req.id)
       .select("-password")
       .populate({
         path: "enrolledCourses",
-        select: "courseTitle subTitle courseThumbnail courseDescription creator category courseLevel coursePrice lectures enrolledStudents createdAt",
-        populate: {
-          path: "creator",
-          select: "name photoUrl email"
-        }
+        // CORRECTED: Using actual field names from Course model
+        select: "courseTitle subtitle description courseThumbnail creator category courseLevel coursePrice lectures enrolledStudents createdAt isPublished",
+        populate: [
+          {
+            path: "creator",
+            select: "name photoUrl email",
+          },
+          {
+            path: "lectures",
+            select: "lectureTitle videoUrl duration isPreviewFree",
+          }
+        ],
       });
-    
+
     if (!user) {
+      console.log("❌ User not found for ID:", req.id);
+      
+      // Clear invalid cookie for localhost
+      const clearCookieOptions = {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        path: "/",
+      };
+      
+      res.clearCookie("token", clearCookieOptions);
+
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
-    // Debug logging
-    console.log(`User ${user._id} has ${user.enrolledCourses.length} enrolled courses`);
+    console.log("✅ Profile found for:", user.email);
+    console.log("📚 Number of enrolled courses:", user.enrolledCourses?.length || 0);
     
-    // Log each enrolled course for debugging
-    user.enrolledCourses.forEach((course, index) => {
-      console.log(`Course ${index + 1}: ${course.courseTitle} (${course._id})`);
-    });
+    // Log first course details for debugging
+    if (user.enrolledCourses && user.enrolledCourses.length > 0) {
+      console.log("📊 First enrolled course:", {
+        id: user.enrolledCourses[0]._id,
+        title: user.enrolledCourses[0].courseTitle,
+        thumbnail: user.enrolledCourses[0].courseThumbnail ? "Exists" : "Missing",
+        creator: user.enrolledCourses[0].creator?.name
+      });
+    }
 
     res.status(200).json({
       success: true,
-      data: user
+      data: user,
     });
+
   } catch (error) {
-    console.error("Get profile error:", error);
+    console.error("❌ Get profile error:", error);
+    console.error("🔍 Error details:", error.message);
+    
+    // Clear cookie on error for localhost
+    const clearCookieOptions = {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+    };
+    
+    res.clearCookie("token", clearCookieOptions);
+
     res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: "Internal server error",
     });
   }
 };
 
-// Update profile - FIXED VERSION
+/* ================= UPDATE PROFILE ================= */
 export const updateProfile = async (req, res) => {
   try {
-    console.log("Update profile request received");
-    console.log("Request body:", req.body);
-    console.log("Request file:", req.file);
-    
+    console.log("🔄 Update profile request");
+    console.log("User ID:", req.id);
+
+    if (!req.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
     const { name } = req.body;
     const userId = req.id;
 
     const updateData = {};
-    
     if (name && name.trim() !== "") {
       updateData.name = name;
     }
-    
-    // Handle file upload if file exists
+
     if (req.file) {
       try {
-        // Import Cloudinary
-        const cloudinary = await import('../utils/cloudinary.js');
-        
-        // Upload to Cloudinary
-        const result = await cloudinary.default.uploader.upload(req.file.path, {
-          folder: "user_profiles"
-        });
-        
-        // Set the Cloudinary URL
+        const cloudinary = await import("../utils/cloudinary.js");
+        const result = await cloudinary.default.uploader.upload(
+          req.file.path,
+          { folder: "user_profiles" }
+        );
         updateData.photoUrl = result.secure_url;
-        console.log("Cloudinary upload successful:", result.secure_url);
-        
+        console.log("📸 Image uploaded to Cloudinary:", result.secure_url);
       } catch (uploadError) {
-        console.error("Cloudinary upload error:", uploadError);
+        console.error("❌ Cloudinary upload error:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Failed to upload image to Cloudinary"
+          message: "Failed to upload image to Cloudinary",
         });
       }
     }
 
-    // Update user
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       updateData,
       { new: true, runValidators: true }
     ).select("-password");
 
-    console.log("Updated user:", updatedUser);
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedUser
+      data: updatedUser,
     });
 
   } catch (error) {
-    console.error("Update profile error:", error);
+    console.error("❌ Update profile error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };

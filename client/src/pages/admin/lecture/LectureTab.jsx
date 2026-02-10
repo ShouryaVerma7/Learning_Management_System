@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import API from "../../../features/api/axios.js";
+// import API from "../../../features/api/axios.js";
 
 import { useParams } from "react-router-dom";
 import { useEditLectureMutation, useGetLectureByIdQuery, useRemoveLectureMutation } from "@/features/api/courseApi";
